@@ -1,4 +1,4 @@
-Lab1.json — Basic Network Infrastructure
+Lab1.json: Basic Network Infrastructure
 This ARM template defines a foundational network setup suitable for a simple multi-tier application.
 
 Key Features
@@ -36,7 +36,7 @@ Load balancing rules for ports 80 and 443
 
 Health probes for HTTP and HTTPS
 
- Lab2.json — Parameterized Network with ASGs
+ Lab2.json: Parameterized Network with ASGs
 This template introduces parameterization and Application Security Groups (ASGs) for flexible deployment.
 
  Key Features
@@ -62,7 +62,7 @@ Web-to-App (TCP 443)
 
 App-to-DB (TCP 1433)
 
-Final "Deny-All" rule
+Final "Deny All" rule
 
 Application Security Groups (ASGs)
 
@@ -80,7 +80,7 @@ Public IP Address
 
 Static IP for the load balancer
 
- Lab3.json — Advanced Multi-VNet Deployment
+ Lab3.json: Advanced Multi-VNet Deployment
 A full-featured deployment template integrating multiple VNets, NSGs, ASGs, DNS Zones, and a virtual machine.
 
  Key Features
