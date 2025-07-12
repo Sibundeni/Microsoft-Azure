@@ -1,0 +1,222 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "location": {
+            "type": "string",
+            "defaultValue": "East US"
+        },
+        "vnet1": {
+            "type": "string",
+            "defaultValue": "vnet1"
+
+        },
+        "subnets": {
+            "type": "array",
+            "defaultValue": [
+                {"name": "webTierSubnet", "addressPrefix": "10.0.1.0/24"},
+                {"name": "ApplicationTierSubnet", "addressPrefix": "10.0.2.0/24"},
+                {"name": "DatabaeTierSubnet", "addressPrefix": "10.0.3.0/24"}
+
+
+            ]
+
+        }
+
+    },
+    "functions": [],
+    "variables": {
+        
+        "vnet1WebSever": "WebASG",
+        "vnet1ApplicationServer": "ApplicationASG",
+        "vnet1DatabaseServer": "DatabaseASG",
+        "NSG1": "nsg1",
+        "loadbalancer1": "loadbalancer1",
+        "publicIPAddress": "Public IP Address"
+
+    },
+    "resources": [
+        {
+            "name": "[parameters('vnet1')]",
+            "type": "Microsoft.Network/virtualNetworks",
+            "apiVersion": "2024-03-01",
+            "location": "[parameters('location')]",
+            "tags": {
+                "displayName": "[parameters('vnet1')]"
+            },
+           
+            "properties": {
+                "addressSpace": {
+                    "addressPrefixes": [
+                        "10.0.0.0/16"
+                    ]
+                },
+                "subnets": [
+                    {
+                        "name": "[parameters('subnets')[0].name]",
+                        "properties": {
+                            "addressPrefix": "[parameters('subnets')[0].addressPrefix]"
+                           
+                        }
+                    },
+                    {
+                        "name": "[parameters('subnets')[1].name]",
+                        "properties": {
+                            "addressPrefix": "[parameters('subnets')[1].addressPrefix]"
+                            
+                        }
+                    },
+                    {
+                        "name": "[parameters('subnets')[2].name]",
+                        "properties": {
+                            "addressPrefix": "[parameters('subnets')[2].addressPrefix]"
+                            
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "name": "[variables('NSG1')]",
+            "type": "Microsoft.Network/networkSecurityGroups",
+            "apiVersion": "2024-03-01",
+            "location": "[parameters('location')]",
+            "properties": {
+                "securityRules": [
+                    {
+                        "name": "[variables('vnet1WebSever')]",
+                        "properties": {
+                            "description": "ALLOW HTTP AND HTTPS",
+                            "protocol": "Tcp",
+                            "sourcePortRange": "*",
+                            "destinationPortRange": "80 and 443",
+                            "sourceAddressPrefix": "*",
+                            "destinationAddressPrefix": "*",
+                            "access": "Allow",
+                            "priority": 100,
+                            "direction": "Inbound"
+                        }
+                    },
+                     {
+                        "name": "[variables('vnet1ApplicationServer')]",
+                        "properties": {
+                            "description": "ALLOW HTTPS",
+                            "protocol": "Tcp",
+                            "sourcePortRange": "*",
+                            "destinationPortRange": "443",
+                            "sourceAddressPrefix": "*",
+                            "destinationAddressPrefix": "*",
+                            "access": "Allow",
+                            "priority": 110,
+                            "direction": "Inbound"
+                        }
+                    },
+                     {
+                        "name": "[variables('vnet1DatabaseServer')]",
+                        "properties": {
+                            "description": "ALLOW SQL SERVER ",
+                            "protocol": "Tcp",
+                            "sourcePortRange": "*",
+                            "destinationPortRange": "1433",
+                            "sourceAddressPrefix": "*",
+                            "destinationAddressPrefix": "*",
+                            "access": "Allow",
+                            "priority": 120,
+                            "direction": "Inbound"
+                        }
+                    },
+                     {
+                        "name": "DENY",
+                        "properties": {
+                            "description": "Deny all ports",
+                            "protocol": "Tcp",
+                            "sourcePortRange": "*",
+                            "destinationPortRange": "*",
+                            "sourceAddressPrefix": "*",
+                            "destinationAddressPrefix": "*",
+                            "access": "Allow",
+                            "priority": 130,
+                            "direction": "Inbound"
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "name": "[variables('loadbalancer1')]",
+            "type": "Microsoft.Network/loadBalancers",
+            "apiVersion": "2024-03-01",
+            "location": "[parameters('location')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/virtualNetworks', 'virtualNetwork1')]"
+            ],
+            "properties": {
+                "frontendIPConfigurations": [
+                    {
+                        "name": "loadBalancerFrontEnd1",
+                        "properties": {
+                            "privateIPAddress": "0.0.0.0",
+                            "privateIPAllocationMethod": "Static",
+                            "subnet": {
+                                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('publicIPAddress'))]"
+                            }
+                        }
+                    }
+                ],
+                "backendAddressPools": [
+                    {
+                        "name": "loadBalancerBackEndPool1"
+                    }
+                ],
+                "loadBalancingRules": [
+                    {
+                        "name": "LBRule1",
+                        "properties": {
+                            "frontendIPConfiguration": {
+                                "id": "[resourceId('Microsoft.Network/loadBalancers/frontendIPConfigurations', variables('loadbalancer1'), 'loadBalancerFrontEnd1')]"
+                            },
+                            "backendAddressPool": {
+                                "id": "[resourceId('Microsoft.Network/loadBalancers/backendAddressPools', variables('loadbalancer1'), 'loadBalancerBackEndPool1')]"
+                            },
+                            "protocol": "Tcp",
+                            "frontendPort": 80,
+                            "backendPort": 80,
+                            "enableFloatingIP": false,
+                            "idleTimeoutInMinutes": 5,
+                            "probe": {
+                                "id": "[resourceId('Microsoft.Network/loadBalancers/probes', variables('loadbalancer1'), 'tcpProbe1')]"
+                            }
+                        }
+                    }
+                ],
+                "probes": [
+                    {
+                        "name": "http-Probe",
+                        "properties": {
+                            "protocol": "http",
+                            "port": 80,
+                            "intervalInSeconds": 5,
+                            "numberOfProbes": 2
+                        }
+                    },
+                     {
+                        "name": "https-Probe",
+                        "properties": {
+                            "protocol": "https",
+                            "port": 443,
+                            "intervalInSeconds": 5,
+                            "numberOfProbes": 2
+                        }
+                    }
+                    
+                ]
+                
+            }
+        }
+        
+
+
+    ],
+    
+    "outputs": {}
+}
